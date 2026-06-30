@@ -576,11 +576,13 @@
 
   // ================= MAIN LOOP =================
   function frame(ts){
-    if(!G.last) G.last=ts;
-    let dt=(ts-G.last)/1000; G.last=ts;
-    dt=Math.min(dt,0.05);
-    if(G.running && !G.over){ step(dt); }
-    draw(); updateHud();
+    try{
+      if(!G.last) G.last=ts;
+      let dt=(ts-G.last)/1000; G.last=ts;
+      dt=Math.min(dt,0.05);
+      if(G.running && !G.over){ step(dt); }
+      if(G.units){ draw(); updateHud(); }
+    }catch(e){ /* Schleife trotz Fehler am Leben halten */ }
     requestAnimationFrame(frame);
   }
 
@@ -625,6 +627,7 @@
   // ================= BOOT =================
   buildHud();
   resize();
+  fresh();   // Spieldaten initialisieren, damit die Szene schon hinter dem Startmenue gezeichnet wird
   requestAnimationFrame(frame);
 })();
 </script>
