@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#3a2a16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Reich der Zeitalter</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  :root{
+    --gold:#e8c25a; --wood:#b9824a; --food:#d56b4a; --stone:#c9c4b8;
+    --panel:#2c2014; --panel2:#3a2a16; --line:#5a4324; --txt:#f3e7cf;
+  }
+  html,body{ height:100%; background:#14100a; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--txt); overflow:hidden; touch-action:none; }
+  #game{ position:fixed; inset:0; display:flex; flex-direction:column; }
+
+  /* ===== Topbar ===== */
+  #top{ flex:0 0 auto; background:linear-gradient(#3a2a16,#2c2014); border-bottom:2px solid var(--line); padding:6px 8px calc(6px + env(safe-area-inset-top)); padding-top:calc(6px + env(safe-area-inset-top)); }
+  #res{ display:flex; gap:10px; justify-content:center; font-size:14px; font-weight:700; flex-wrap:wrap; }
+  #res .r{ display:flex; align-items:center; gap:3px; background:#1d150c; border:1px solid var(--line); border-radius:8px; padding:3px 8px; min-width:62px; }
+  #res .r small{ font-weight:400; opacity:.7; font-size:10px; }
+  .ico{ font-size:14px; }
+
+  #bars{ display:flex; gap:8px; margin-top:6px; align-items:center; }
+  .basebar{ flex:1; }
+  .basebar .lbl{ font-size:10px; display:flex; justify-content:space-between; opacity:.85; margin-bottom:2px;}
+  .barbg{ height:9px; background:#1d150c; border:1px solid var(--line); border-radius:5px; overflow:hidden; }
+  .barfill{ height:100%; transition:width .15s; }
+  .me .barfill{ background:linear-gradient(#7ec85a,#4f9c34); }
+  .foe .barfill{ background:linear-gradient(#e0644c,#a8392a); }
+  #age{ text-align:center; font-size:11px; opacity:.85; margin-top:4px; letter-spacing:.5px; }
+
+  /* ===== Canvas ===== */
+  #stageWrap{ flex:1 1 auto; position:relative; overflow:hidden; }
+  canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #toast{ position:absolute; top:8px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.72); border:1px solid var(--line); padding:5px 12px; border-radius:14px; font-size:12px; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; }
+  #toast.show{ opacity:1; }
+
+  /* ===== Controls ===== */
+  #hud{ flex:0 0 auto; background:linear-gradient(#2c2014,#211810); border-top:2px solid var(--line); padding:6px 6px calc(6px + env(safe-area-inset-bottom)); }
+  .row{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .row + .row{ margin-top:6px; }
+  .btn{ background:linear-gradient(#46341d,#33260f); border:1px solid var(--line); border-radius:10px; padding:7px 3px 6px; text-align:center; position:relative; transition:transform .05s, filter .1s; min-height:60px; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+  .btn:active{ transform:scale(.94); filter:brightness(1.25); }
+  .btn .em{ font-size:22px; line-height:1; }
+  .btn .nm{ font-size:10px; font-weight:700; margin-top:2px; }
+  .btn .cost{ font-size:9px; margin-top:2px; opacity:.9; display:flex; gap:4px; justify-content:center; }
+  .btn.lock{ opacity:.4; filter:grayscale(.7); }
+  .btn.cant .cost{ color:#ff7b6b; }
+  .btn .cd{ position:absolute; inset:0; background:rgba(0,0,0,.55); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; }
+  .btn .badge{ position:absolute; top:-6px; right:-4px; background:#a8392a; border:1px solid #e0644c; border-radius:9px; font-size:9px; padding:1px 5px; font-weight:800; }
+
+  /* ===== Overlay ===== */
+  #overlay{ position:fixed; inset:0; background:rgba(8,5,2,.92); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:50; }
+  #overlay h1{ font-size:30px; margin-bottom:6px; color:var(--gold); text-shadow:0 2px 0 #000; letter-spacing:1px; }
+  #overlay .sub{ font-size:14px; opacity:.85; max-width:340px; line-height:1.5; margin-bottom:18px; }
+  #overlay .big{ font-size:48px; margin-bottom:8px; }
+  .pill{ background:linear-gradient(#5a4324,#3a2a16); border:1px solid var(--gold); color:var(--txt); font-size:16px; font-weight:800; padding:12px 28px; border-radius:30px; margin-top:6px; letter-spacing:.5px; }
+  .pill:active{ filter:brightness(1.2); }
+  .diffrow{ display:flex; gap:8px; margin:6px 0 4px; }
+  .diff{ background:#33260f; border:1px solid var(--line); padding:8px 16px; border-radius:20px; font-size:13px; font-weight:700; }
+  .diff.sel{ border-color:var(--gold); background:#5a4324; }
+  .help{ font-size:11px; opacity:.6; margin-top:16px; max-width:320px; line-height:1.5; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="top">
+    <div id="res">
+      <div class="r"><span class="ico">🍖</span><span id="food">0</span></div>
+      <div class="r"><span class="ico">🪵</span><span id="wood">0</span></div>
+      <div class="r"><span class="ico">🪙</span><span id="gold">0</span></div>
+      <div class="r"><span class="ico">👥</span><span id="pop">0/0</span></div>
+    </div>
+    <div id="bars">
+      <div class="basebar me">
+        <div class="lbl"><span>🏰 Deine Burg</span><span id="meHpTxt"></span></div>
+        <div class="barbg"><div class="barfill" id="meHp" style="width:100%"></div></div>
+      </div>
+      <div class="basebar foe">
+        <div class="lbl"><span id="foeHpTxt"></span><span>Feind 🏯</span></div>
+        <div class="barbg"><div class="barfill" id="foeHp" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div id="age">⌛ <span id="ageTxt">Dunkles Zeitalter</span></div>
+  </div>
+
+  <div id="stageWrap">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
+  </div>
+
+  <div id="hud"></div>
+</div>
+
+<div id="overlay">
+  <h1>⚔️ Reich der Zeitalter</h1>
+  <div class="sub">Baue dein Dorf auf, sammle Rohstoffe, steige durch die Zeitalter auf und zerstöre die feindliche Festung – bevor sie deine zerstört!</div>
+  <div class="diffrow" id="diffRow">
+    <div class="diff" data-d="0">Leicht</div>
+    <div class="diff sel" data-d="1">Normal</div>
+    <div class="diff" data-d="2">Schwer</div>
+  </div>
+  <div class="pill" id="startBtn">▶ Spiel starten</div>
+  <div class="help">
+    🍖 Dorfbewohner sammeln Rohstoffe automatisch.<br>
+    ⚔️ Soldaten marschieren los und greifen den Feind an.<br>
+    🏯 Türme verteidigen deine Burg.<br>
+    ⌛ Steige im Zeitalter auf, um stärkere Einheiten freizuschalten.
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let W=0, H=0, DPR=1;
+
+  // ---- World coordinates (logical) ----
+  // We use a fixed logical height and scale to canvas. x in [0..1000].
+  const LANE_Y = ()=> H*0.62;            // ground line (canvas px)
+  const PLAYER_BASE_X = 0.08;            // fraction of width
+  const ENEMY_BASE_X  = 0.92;
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio||1, 2);
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = Math.floor(W*DPR); cv.height = Math.floor(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+
+  // ================= GAME DATA =================
+  const AGES = ['Dunkles Zeitalter','Feudalzeit','Ritterzeit','Imperialzeit'];
+  const AGE_MULT = [1, 1.35, 1.8, 2.4];   // unit stat multiplier per age
+
+  // Unit blueprints. cost: {f,w,g}. atk, hp, range(px), speed(px/s), rate(s)
+  const UNITS = {
+    villager:{ name:'Dorfbewohner', em:'🧑‍🌾', cost:{f:50,w:0,g:0}, hp:35, atk:3, range:14, speed:34, rate:1.2, pop:1, build:3, minAge:0, worker:true },
+    soldier: { name:'Schwertmann', em:'⚔️', cost:{f:60,w:0,g:20}, hp:120, atk:14, range:18, speed:30, rate:1.0, pop:1, build:4, minAge:1 },
+    archer:  { name:'Bogenschütze',em:'🏹', cost:{f:40,w:30,g:0}, hp:60, atk:11, range:130, speed:32, rate:1.1, pop:1, build:4, minAge:1 },
+    knight:  { name:'Ritter',      em:'🐎', cost:{f:80,w:0,g:75}, hp:240, atk:24, range:20, speed:52, rate:0.9, pop:2, build:6, minAge:2 },
+    cannon:  { name:'Kanone',      em:'💥', cost:{f:0,w:60,g:120}, hp:90, atk:60, range:165, speed:18, rate:2.2, pop:2, build:8, minAge:3, splash:true },
+  };
+
+  const G = {}; // game state
+  let DIFF = 1;
+
+  function fresh(){
+    Object.assign(G,{
+      running:false, over:false, t:0, last:0,
+      food:200, wood:150, gold:80, pop:0, popCap:8,
+      meHp:1500, meHpMax:1500, foeHp:1500, foeHpMax:1500,
+      age:0, ageProg:0,
+      units:[], shots:[], fx:[],
+      towers:0, towerCd:0,
+      // economy: each villager yields food/gold/wood per sec
+      // enemy AI
+      eFood:0, eGold:300+DIFF*250, eAge:0, eSpawnCd:3, eAgeCd:38-DIFF*7, eTower:0,
+      queue:[], // build queue {key, t}
+      kills:0, lost:0,
+      diff:DIFF,
+    });
+  }
+
+  // ================= INPUT / HUD =================
+  const hud = document.getElementById('hud');
+  const ACTIONS = [
+    {key:'villager', kind:'train'},
+    {key:'soldier',  kind:'train'},
+    {key:'archer',   kind:'train'},
+    {key:'knight',   kind:'train'},
+    {key:'cannon',   kind:'train'},
+    {key:'tower',    kind:'build', name:'Wachturm', em:'🗼', cost:{f:0,w:120,g:40}, minAge:1},
+    {key:'wall',     kind:'repair', name:'Reparieren',em:'🛠️', cost:{f:0,w:80,g:20}, minAge:0},
+    {key:'age',      kind:'age',   name:'Aufsteigen',em:'⌛'},
+  ];
+  const AGE_COST = [ {f:0,w:0,g:0}, {f:300,w:200,g:0}, {f:500,w:300,g:200}, {f:800,w:400,g:600} ];
+
+  const btnEls = {};
+  function buildHud(){
+    hud.innerHTML='';
+    const rows=[ACTIONS.slice(0,4), ACTIONS.slice(4,8)];
+    rows.forEach(group=>{
+      const row=document.createElement('div'); row.className='row';
+      group.forEach(a=>{
+        const b=document.createElement('div'); b.className='btn'; b.dataset.key=a.key;
+        b.innerHTML=`<div class="em"></div><div class="nm"></div><div class="cost"></div><div class="cd hidden"></div><div class="badge hidden"></div>`;
+        b.addEventListener('click',()=>doAction(a));
+        row.appendChild(b); btnEls[a.key]=b;
+      });
+      hud.appendChild(row);
+    });
+  }
+
+  function costOf(a){
+    if(a.kind==='train') return UNITS[a.key].cost;
+    if(a.kind==='age') return AGE_COST[Math.min(G.age+1,3)];
+    return a.cost;
+  }
+  function minAgeOf(a){
+    if(a.kind==='train') return UNITS[a.key].minAge;
+    return a.minAge||0;
+  }
+  function canAfford(c){ return G.food>=c.f && G.wood>=c.w && G.gold>=c.g; }
+
+  function doAction(a){
+    if(!G.running||G.over) return;
+    const c=costOf(a);
+    if(minAgeOf(a)>G.age){ toast('Erst im '+AGES[minAgeOf(a)]+' verfügbar'); return; }
+
+    if(a.kind==='age'){
+      if(G.age>=3){ toast('Höchstes Zeitalter erreicht'); return; }
+      if(!canAfford(c)){ toast('Nicht genug Rohstoffe'); return; }
+      G.food-=c.f; G.wood-=c.w; G.gold-=c.g;
+      G.age++; G.meHpMax+=400; G.meHp+=400;
+      toast('🎉 Aufstieg: '+AGES[G.age]+'!');
+      beep(660,.12); setTimeout(()=>beep(880,.14),120);
+      return;
+    }
+    if(a.kind==='build'){ // tower
+      if(G.towers>=4){ toast('Maximal 4 Türme'); return; }
+      if(!canAfford(c)){ toast('Nicht genug Rohstoffe'); return; }
+      G.food-=c.f; G.wood-=c.w; G.gold-=c.g; G.towers++;
+      toast('🗼 Wachturm gebaut');
+      beep(440,.1); return;
+    }
+    if(a.kind==='repair'){
+      if(G.meHp>=G.meHpMax){ toast('Burg ist voll repariert'); return; }
+      if(!canAfford(c)){ toast('Nicht genug Rohstoffe'); return; }
+      G.food-=c.f; G.wood-=c.w; G.gold-=c.g;
+      G.meHp=Math.min(G.meHpMax,G.meHp+350);
+      spawnFx(PLAYER_BASE_X*W, LANE_Y()-30,'✨'); beep(520,.08); return;
+    }
+    if(a.kind==='train'){
+      const u=UNITS[a.key];
+      if(G.pop+u.pop>G.popCap){ toast('Bevölkerungslimit! Baue mehr Häuser? (auto)'); return; }
+      if(!canAfford(c)){ toast('Nicht genug Rohstoffe'); return; }
+      G.food-=c.f; G.wood-=c.w; G.gold-=c.g;
+      G.pop+=u.pop;
+      G.queue.push({key:a.key, t:u.build, total:u.build});
+      beep(330,.05);
+    }
+  }
+
+  // ================= UNIT FACTORY =================
+  function makeUnit(key, side){
+    const u=UNITS[key];
+    const mult = side==='me'? AGE_MULT[G.age] : AGE_MULT[G.eAge];
+    const y = LANE_Y() + (Math.random()*36-18);
+    return {
+      key, side, em:u.em, worker:u.worker, splash:u.splash,
+      x: side==='me'? PLAYER_BASE_X*W+10 : ENEMY_BASE_X*W-10,
+      y, ty:y,
+      hp: u.hp*mult, hpMax:u.hp*mult,
+      atk: u.atk*mult, range:u.range, speed:u.speed, rate:u.rate,
+      cd:0, pop:u.pop, target:null, hit:0,
+    };
+  }
+
+  // ================= LOOP =================
+  function step(dt){
+    G.t+=dt;
+    // ---- player economy ----
+    let workers=0;
+    for(const u of G.units){ if(u.side==='me'&&u.worker) workers++; }
+    const ageEco = 1+G.age*0.18;
+    G.food += workers*2.4*ageEco*dt;
+    G.gold += workers*1.3*ageEco*dt;
+    G.wood += workers*1.6*ageEco*dt;
+    // pop cap grows slightly with age + base
+    G.popCap = 8 + G.age*4 + Math.floor(G.t/45);
+
+    // ---- build queue ----
+    if(G.queue.length){
+      const q=G.queue[0]; q.t-=dt;
+      if(q.t<=0){ G.units.push(makeUnit(q.key,'me')); G.queue.shift(); }
+    }
+
+    // ---- enemy AI ----
+    enemyAI(dt);
+
+    // ---- units update ----
+    updateUnits(dt);
+
+    // ---- towers fire ----
+    G.towerCd-=dt;
+    if(G.towers>0 && G.towerCd<=0){
+      // find nearest enemy near our base
+      let best=null,bd=1e9;
+      for(const u of G.units){ if(u.side==='foe'){ const d=u.x-PLAYER_BASE_X*W; if(d<W*0.55&&d<bd){bd=d;best=u;} } }
+      if(best){ G.shots.push({x:PLAYER_BASE_X*W+8,y:LANE_Y()-40,tx:best.x,ty:best.y,target:best,dmg:(10+G.age*6),side:'me',v:520,col:'#ffd86b'}); G.towerCd=1.1; }
+    }
+    // enemy tower
+    if(G.eTower>0){
+      G._etcd=(G._etcd||0)-dt;
+      if(G._etcd<=0){
+        let best=null,bd=1e9;
+        for(const u of G.units){ if(u.side==='me'){ const d=ENEMY_BASE_X*W-u.x; if(d<W*0.55&&d<bd){bd=d;best=u;} } }
+        if(best){ G.shots.push({x:ENEMY_BASE_X*W-8,y:LANE_Y()-40,tx:best.x,ty:best.y,target:best,dmg:(10+G.eAge*6),side:'foe',v:520,col:'#ff9a6b'}); G._etcd=1.2; }
+      }
+    }
+
+    // ---- projectiles ----
+    updateShots(dt);
+
+    // ---- fx ----
+    for(const f of G.fx){ f.t-=dt; f.y-=18*dt; }
+    G.fx=G.fx.filter(f=>f.t>0);
+
+    // ---- win / lose ----
+    if(G.foeHp<=0){ endGame(true); }
+    else if(G.meHp<=0){ endGame(false); }
+  }
+
+  function enemyAI(dt){
+    const d=G.diff;
+    G.eGold += (2.2 + d*1.1) * (1+G.eAge*0.25) * dt;  // enemy passive income (scales)
+    // advance age
+    G.eAgeCd-=dt;
+    if(G.eAge<3 && G.eAgeCd<=0){ G.eAge++; G.foeHpMax+=400; G.foeHp+=400; G.eAgeCd=42-d*8; }
+    // build tower once reaching feudal-ish
+    if(G.eTower<2 && G.eAge>=1 && G.eGold>200 && Math.random()<0.2*dt){ G.eTower++; G.eGold-=180; }
+    // spawn units
+    G.eSpawnCd-=dt;
+    if(G.eSpawnCd<=0){
+      const pool=[];
+      for(const k in UNITS){ if(!UNITS[k].worker && UNITS[k].minAge<=G.eAge) pool.push(k); }
+      if(pool.length){
+        const key=pool[Math.floor(Math.random()*pool.length)];
+        const cost=UNITS[key].cost; const total=cost.g+cost.f*0.5+cost.w*0.5;
+        if(G.eGold>=total){ G.eGold-=total; G.units.push(makeUnit(key,'foe')); }
+      }
+      G.eSpawnCd = Math.max(1.1, (4.2 - d*0.7) - G.eAge*0.3);
+    }
+  }
+
+  function updateUnits(dt){
+    const arr=G.units;
+    for(const u of arr){
+      if(u.hp<=0) continue;
+      u.cd-=dt; u.hit=Math.max(0,u.hit-dt);
+      // vertical drift toward lane
+      u.y += (u.ty-u.y)*Math.min(1,dt*3);
+
+      // workers: stay near base, just gather (no combat unless enemy close)
+      const dir = u.side==='me'?1:-1;
+
+      // find target (nearest enemy unit in front, within some scan)
+      let tgt=null, td=1e9;
+      for(const e of arr){
+        if(e.hp<=0||e.side===u.side) continue;
+        const dx=e.x-u.x;
+        const d=Math.abs(dx);
+        if(d<td){ td=d; tgt=e; }
+      }
+      const baseX = u.side==='me'? ENEMY_BASE_X*W : PLAYER_BASE_X*W;
+      const distBase = Math.abs(baseX-u.x);
+
+      if(u.worker){
+        // workers retreat/idle near own base; fight only if enemy very close
+        const homeX = u.side==='me'? PLAYER_BASE_X*W+40 : ENEMY_BASE_X*W-40;
+        if(tgt && td<u.range+8){ attack(u,tgt); }
+        else { u.x += (homeX-u.x)*Math.min(1,dt*1.5); }
+        continue;
+      }
+
+      if(tgt && td<=u.range){
+        attack(u,tgt);
+      } else if(distBase<=u.range+6 && !tgt){
+        // attack enemy base
+        attackBase(u,dt);
+      } else if(distBase<=u.range+6 && tgt && td>u.range){
+        attackBase(u,dt);
+      } else {
+        u.x += dir*u.speed*dt;
+      }
+    }
+    // remove dead
+    for(const u of arr){ if(u.hp<=0 && !u._counted){ u._counted=true; if(u.side==='foe')G.kills++; else G.lost++; spawnFx(u.x,u.y-20,'💀'); G.pop -= (u.side==='me'?u.pop:0); } }
+    G.units = arr.filter(u=>u.hp>0);
+  }
+
+  function attack(u,tgt){
+    if(u.cd>0) return;
+    u.cd=u.rate;
+    if(u.range>40){ // ranged -> projectile
+      G.shots.push({x:u.x,y:u.y-10,tx:tgt.x,ty:tgt.y-10,target:tgt,dmg:u.atk,side:u.side,v:430,col:u.side==='me'?'#bfe89a':'#ffb59a',splash:u.splash});
+    } else { // melee instant
+      tgt.hp-=u.atk; tgt.hit=.15; spawnFx(tgt.x,tgt.y-22,'-'+Math.round(u.atk),true);
+      if(u.side==='me')beep(220,.02,0.04);
+    }
+  }
+  function attackBase(u,dt){
+    if(u.cd>0) return; u.cd=u.rate;
+    const dmg=u.atk;
+    if(u.side==='me'){ G.foeHp-=dmg; spawnFx(ENEMY_BASE_X*W,LANE_Y()-50,'💥'); }
+    else { G.meHp-=dmg; spawnFx(PLAYER_BASE_X*W,LANE_Y()-50,'💥'); }
+  }
+
+  function updateShots(dt){
+    for(const s of G.shots){
+      if(s.target && s.target.hp>0){ s.tx=s.target.x; s.ty=s.target.y-10; }
+      const dx=s.tx-s.x, dy=s.ty-s.y, d=Math.hypot(dx,dy);
+      const mv=s.v*dt;
+      if(d<=mv){
+        s.dead=true;
+        // apply dmg
+        if(s.target && s.target.hp>0){
+          s.target.hp-=s.dmg; s.target.hit=.15; spawnFx(s.target.x,s.target.y-22,'-'+Math.round(s.dmg),true);
+          if(s.splash){ for(const e of G.units){ if(e.side!==s.side && e!==s.target && e.hp>0 && Math.abs(e.x-s.target.x)<46){ e.hp-=s.dmg*0.5; e.hit=.15; } } spawnFx(s.target.x,s.target.y-10,'💥'); }
+        } else {
+          // target gone -> maybe hit base
+        }
+      } else { s.x+=dx/d*mv; s.y+=dy/d*mv; }
+    }
+    G.shots=G.shots.filter(s=>!s.dead);
+  }
+
+  function spawnFx(x,y,txt,dmg){ G.fx.push({x,y,txt,t:.7,dmg:!!dmg}); }
+
+  // ================= RENDER =================
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const gy=LANE_Y();
+
+    // sky gradient
+    let sky=ctx.createLinearGradient(0,0,0,gy);
+    sky.addColorStop(0,'#6b86a8'); sky.addColorStop(1,'#c7b48a');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,gy);
+    // sun
+    ctx.fillStyle='rgba(255,240,200,.85)'; ctx.beginPath(); ctx.arc(W*0.5,gy*0.32,18,0,7); ctx.fill();
+    // distant hills
+    ctx.fillStyle='#9aa06a';
+    ctx.beginPath(); ctx.moveTo(0,gy);
+    for(let i=0;i<=W;i+=40){ ctx.lineTo(i, gy-20-Math.sin(i*0.01)*16); }
+    ctx.lineTo(W,gy); ctx.fill();
+
+    // ground
+    let gr=ctx.createLinearGradient(0,gy,0,H);
+    gr.addColorStop(0,'#6f9a3f'); gr.addColorStop(1,'#4d6b2a');
+    ctx.fillStyle=gr; ctx.fillRect(0,gy,W,H-gy);
+    // path
+    ctx.fillStyle='#b79a5e'; ctx.fillRect(0,gy+22,W,18);
+    ctx.fillStyle='rgba(0,0,0,.08)'; ctx.fillRect(0,gy+22,W,3);
+
+    // bases
+    drawBase(PLAYER_BASE_X*W, gy, '🏰', 'me');
+    drawBase(ENEMY_BASE_X*W, gy, '🏯', 'foe');
+    // towers
+    for(let i=0;i<G.towers;i++) drawEmoji('🗼', PLAYER_BASE_X*W+34+i*16, gy-30, 22);
+    for(let i=0;i<G.eTower;i++) drawEmoji('🗼', ENEMY_BASE_X*W-34-i*16, gy-30, 22);
+
+    // sort units by y for depth
+    const sorted=[...G.units].sort((a,b)=>a.y-b.y);
+    for(const u of sorted) drawUnit(u);
+
+    // projectiles
+    for(const s of G.shots){
+      ctx.fillStyle=s.col; ctx.beginPath(); ctx.arc(s.x,s.y,s.splash?5:3,0,7); ctx.fill();
+      ctx.strokeStyle=s.col+'66'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x-(s.tx-s.x)*0.03, s.y-(s.ty-s.y)*0.03); ctx.stroke();
+    }
+
+    // floating fx
+    ctx.textAlign='center';
+    for(const f of G.fx){
+      ctx.globalAlpha=Math.max(0,f.t/0.7);
+      ctx.font= f.dmg? 'bold 13px sans-serif':'18px sans-serif';
+      ctx.fillStyle= f.dmg? '#ffe08a':'#fff';
+      ctx.fillText(f.txt, f.x, f.y);
+    }
+    ctx.globalAlpha=1;
+  }
+
+  function drawBase(x,gy,em,side){
+    const hp = side==='me'?G.meHp/G.meHpMax:G.foeHp/G.foeHpMax;
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(x,gy+30,40,10,0,0,7); ctx.fill();
+    drawEmoji(em,x,gy-6,58);
+    // damage flicker
+    if(hp<0.34){ ctx.fillStyle='rgba(255,80,40,'+(0.15+0.15*Math.sin(G.t*8))+')'; ctx.fillRect(x-30,gy-60,60,60); }
+  }
+
+  function drawUnit(u){
+    const s=u.hp/u.hpMax;
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(u.x,u.y+8,13,4,0,0,7); ctx.fill();
+    ctx.save();
+    if(u.hit>0){ ctx.globalAlpha=0.6; }
+    // mirror enemy
+    drawEmoji(u.em,u.x,u.y, u.key==='knight'?30:26, u.side==='foe');
+    ctx.restore();
+    // small flag color dot
+    ctx.fillStyle=u.side==='me'?'#5ec85a':'#e0644c';
+    ctx.fillRect(u.x-9,u.y-24,2,4);
+    // hp bar
+    if(s<1){
+      ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(u.x-12,u.y-26,24,3);
+      ctx.fillStyle=u.side==='me'?'#7ec85a':'#e0644c'; ctx.fillRect(u.x-12,u.y-26,24*s,3);
+    }
+  }
+
+  function drawEmoji(em,x,y,size,flip){
+    ctx.save();
+    ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    if(flip){ ctx.translate(x,0); ctx.scale(-1,1); x=0; }
+    ctx.fillText(em,x,y);
+    ctx.restore();
+  }
+
+  // ================= HUD UPDATE =================
+  function fmt(n){ return Math.floor(n); }
+  function updateHud(){
+    document.getElementById('food').textContent=fmt(G.food);
+    document.getElementById('wood').textContent=fmt(G.wood);
+    document.getElementById('gold').textContent=fmt(G.gold);
+    document.getElementById('pop').textContent=G.pop+'/'+G.popCap;
+    document.getElementById('ageTxt').textContent=AGES[G.age];
+    const meP=Math.max(0,G.meHp/G.meHpMax*100), foeP=Math.max(0,G.foeHp/G.foeHpMax*100);
+    document.getElementById('meHp').style.width=meP+'%';
+    document.getElementById('foeHp').style.width=foeP+'%';
+    document.getElementById('meHpTxt').textContent=fmt(Math.max(0,G.meHp));
+    document.getElementById('foeHpTxt').textContent=fmt(Math.max(0,G.foeHp));
+
+    for(const a of ACTIONS){
+      const b=btnEls[a.key]; if(!b) continue;
+      const em=b.querySelector('.em'), nm=b.querySelector('.nm'), cost=b.querySelector('.cost'), cd=b.querySelector('.cd'), badge=b.querySelector('.badge');
+      let emoji,label,c;
+      if(a.kind==='train'){ const u=UNITS[a.key]; emoji=u.em; label=u.name; c=u.cost; }
+      else if(a.kind==='age'){ emoji='⌛'; label= G.age>=3?'Max':'Aufstieg'; c=AGE_COST[Math.min(G.age+1,3)]; }
+      else { emoji=a.em; label=a.name; c=a.cost; }
+      em.textContent=emoji; nm.textContent=label;
+      let parts=[];
+      if(a.kind==='age'&&G.age>=3){ parts=['—']; }
+      else { if(c.f)parts.push('🍖'+c.f); if(c.w)parts.push('🪵'+c.w); if(c.g)parts.push('🪙'+c.g); if(!parts.length)parts.push('frei'); }
+      cost.innerHTML=parts.join(' ');
+
+      const locked = minAgeOf(a)>G.age;
+      b.classList.toggle('lock', locked);
+      b.classList.toggle('cant', !locked && !canAfford(c) && !(a.kind==='age'&&G.age>=3));
+
+      // queue badge for villagers/units
+      if(a.kind==='train'){
+        const qn=G.queue.filter(q=>q.key===a.key).length;
+        if(qn>0){ badge.classList.remove('hidden'); badge.textContent=qn; } else badge.classList.add('hidden');
+      } else badge.classList.add('hidden');
+
+      // build progress on first queued
+      if(a.kind==='train' && G.queue.length && G.queue[0].key===a.key){
+        cd.classList.remove('hidden'); cd.textContent=Math.ceil(G.queue[0].t)+'s';
+      } else cd.classList.add('hidden');
+    }
+  }
+
+  // ================= TOAST + SOUND =================
+  let toastT;
+  function toast(msg){
+    const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+    clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),1400);
+  }
+  let actx;
+  function beep(freq,dur,vol){
+    try{
+      if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+      const o=actx.createOscillator(), g=actx.createGain();
+      o.frequency.value=freq; o.type='triangle';
+      g.gain.value=vol||0.06; o.connect(g); g.connect(actx.destination);
+      o.start(); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+(dur||0.1));
+      o.stop(actx.currentTime+(dur||0.1)+0.02);
+    }catch(e){}
+  }
+
+  // ================= MAIN LOOP =================
+  function frame(ts){
+    if(!G.last) G.last=ts;
+    let dt=(ts-G.last)/1000; G.last=ts;
+    dt=Math.min(dt,0.05);
+    if(G.running && !G.over){ step(dt); }
+    draw(); updateHud();
+    requestAnimationFrame(frame);
+  }
+
+  // ================= START / END =================
+  const overlay=document.getElementById('overlay');
+  document.getElementById('diffRow').addEventListener('click',e=>{
+    const d=e.target.closest('.diff'); if(!d)return;
+    DIFF=+d.dataset.d;
+    [...document.querySelectorAll('.diff')].forEach(x=>x.classList.toggle('sel',x===d));
+  });
+  document.getElementById('startBtn').addEventListener('click', start);
+
+  function start(){
+    resize();
+    fresh();
+    // starting villagers
+    for(let i=0;i<3;i++) G.units.push(makeUnit('villager','me'));
+    G.pop=3;
+    G.running=true; G.over=false;
+    overlay.classList.add('hidden');
+    try{ if(actx) actx.resume(); }catch(e){}
+    beep(523,.1); setTimeout(()=>beep(784,.12),110);
+    toast('Sammle Rohstoffe und baue eine Armee!');
+  }
+
+  function endGame(win){
+    if(G.over) return;
+    G.over=true; G.running=false;
+    overlay.classList.remove('hidden');
+    overlay.innerHTML = `
+      <div class="big">${win?'🏆':'💀'}</div>
+      <h1>${win?'Sieg!':'Niederlage'}</h1>
+      <div class="sub">${win
+        ? 'Du hast die feindliche Festung dem Erdboden gleichgemacht! Dein Reich erstrahlt im '+AGES[G.age]+'.'
+        : 'Deine Burg ist gefallen. Beim nächsten Mal früher Soldaten ausbilden und Türme bauen!'}<br><br>
+        ⚔️ Feinde besiegt: <b>${G.kills}</b> &nbsp;·&nbsp; ⌛ Zeitalter: <b>${AGES[G.age]}</b> &nbsp;·&nbsp; ⏱️ ${Math.floor(G.t)}s</div>
+      <div class="pill" id="againBtn">↻ Nochmal spielen</div>`;
+    document.getElementById('againBtn').addEventListener('click',()=>{ location.reload(); });
+    beep(win?660:160,.2); setTimeout(()=>beep(win?880:120,.25),160);
+  }
+
+  // ================= BOOT =================
+  buildHud();
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
